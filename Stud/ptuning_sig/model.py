@@ -25,7 +25,7 @@ class Classifier(LightningModule):
         self.save_hyperparameters()
         self.config = config
         weight = torch.tensor([11.])
-        self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight=weight)
 
         self.train_logit_list = []
         self.train_label_list = []
