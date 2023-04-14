@@ -14,7 +14,7 @@ import numpy as np
 import random
 from transformers.adapters import AdapterConfig
 from transformers import AutoTokenizer, AutoModel, AdamW, BertConfig, BertModelWithHeads
-from dataset_nosep import StudDataset
+from dataset import StudDataset
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score
 import torchmetrics
 

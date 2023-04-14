@@ -13,7 +13,7 @@ import os
 import numpy as np
 import random
 from transformers import AutoTokenizer, AutoModel, AdamW, BertModel, BertConfig
-from dataset_nosep import StudDataset
+from dataset import StudDataset
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score
 import torchmetrics
 from prefix_encoder import PrefixEncoder

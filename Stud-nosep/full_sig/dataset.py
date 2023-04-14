@@ -16,9 +16,9 @@ class StudDataset(Dataset):
 
     def __getitem__(self, idx):
         text = self.text_data[idx]
-        lecture = self.lecture_data[idx]
+        # lecture = self.lecture_data[idx]
         label = self.label_data[idx]
-        input_data = self.tokenizer.encode_plus(text, lecture,
+        input_data = self.tokenizer.encode_plus(text,
                                                 return_tensors='pt',
                                                 padding='max_length',
                                                 truncation=True)
@@ -31,12 +31,12 @@ class StudDataset(Dataset):
         df = pd.read_csv(path, encoding='utf-8-sig', sep='\t')
         df = df.dropna()
         self.text_data = []
-        self.lecture_data = []
+        # self.lecture_data = []
         self.label_data = []
         for seq in tqdm(df.iloc, total=df.shape[0], desc="preprocessing"):
             tmp = list(seq)
-            self.text_data.append(str(tmp[0])+' '+str(tmp[1]))
-            self.lecture_data.append(str(tmp[2]))
+            self.text_data.append(str(tmp[0])+' '+str(tmp[1])+' '+str(tmp[1]))
+            # self.lecture_data.append(str(tmp[2]))
             self.label_data.append(int(tmp[3]))
 
     def custom_collate(self, batch):
