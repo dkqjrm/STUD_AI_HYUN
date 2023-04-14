@@ -13,7 +13,7 @@ import os
 import numpy as np
 import random
 from transformers import AutoTokenizer, AutoModel, AdamW, BertModel
-from dataset import StudDataset
+from dataset_nosep import StudDataset
 from torchmetrics.classification import Accuracy, Precision, Recall, F1Score
 import torchmetrics
 
@@ -23,10 +23,8 @@ class Classifier(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.config = config
-        # weight = torch.tensor([0.54743729, 6.00844647])
-        weight = torch.tensor([1., 11.])
-        self.criterion = nn.CrossEntropyLoss(weight=weight)
-        # self.criterion = nn.CrossEntropyLoss()
+        weight = torch.tensor([11.])
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight=weight)
 
         self.train_logit_list = []
         self.train_label_list = []
@@ -48,7 +46,7 @@ class Classifier(LightningModule):
 
         self.dropout = torch.nn.Dropout(config['hidden_dropout_prob'])
         self.f_mlp = nn.Sequential(
-            nn.Linear(768, 2)
+            nn.Linear(768, 1)
         )
 
     def get_prompt(self, batch_size):
@@ -81,19 +79,21 @@ class Classifier(LightningModule):
         sch.step()
 
     def training_step(self, train_batch, batch_idx):
-        out = self.forward(
-            [train_batch['input_ids'], train_batch['token_type_ids'], train_batch['attention_mask']])
+        out = self.forward([train_batch['input_ids'], train_batch['token_type_ids'], train_batch['attention_mask']])
 
-        loss = self.criterion(out, train_batch['label'])
-        output = self.train_metrics(torch.softmax(out, dim=1), train_batch['label'])
+        loss = self.criterion(out, train_batch['label'].unsqueeze(1).float())
+        output = self.train_metrics(torch.sigmoid(out), train_batch['label'].unsqueeze(1).float())
 
         self.train_logit_list.append(out.detach())
         self.train_label_list.append(train_batch['label'].detach())
 
-        self.log_dict({'train_acc' : output['train_MulticlassAccuracy'],
-                       'train_pre' : output['train_MulticlassPrecision'][1],
-                       'train_rec' : output['train_MulticlassRecall'][1],
-                       'train_f1' : output['train_MulticlassF1Score'][1],
+        # sch = self.lr_schedulers()
+        # sch.step()
+
+        self.log_dict({'train_acc' : output['train_BinaryAccuracy'],
+                       'train_pre' : output['train_BinaryPrecision'],
+                       'train_rec' : output['train_BinaryRecall'],
+                       'train_f1' : output['train_BinaryF1Score'],
                        'train_loss' : loss.item(),
                        'lr' : self.optimizers().param_groups[0]['lr']},
                        on_step=True, prog_bar=True)
@@ -102,11 +102,11 @@ class Classifier(LightningModule):
     def on_train_epoch_end(self):
         logits = torch.cat(self.train_logit_list, dim=0)
         labels = torch.cat(self.train_label_list, dim=0)
-        output = self.train_epoch_metrics(torch.softmax(logits, dim=1), labels)
-        self.log_dict({'train_epoch_acc' : output['train_epoch_MulticlassAccuracy'],
-                       'train_epoch_pre' : output['train_epoch_MulticlassPrecision'][1],
-                       'train_epoch_rec' : output['train_epoch_MulticlassRecall'][1],
-                       'train_epoch_f1' : output['train_epoch_MulticlassF1Score'][1]},
+        output = self.train_epoch_metrics(torch.sigmoid(logits), labels.unsqueeze(1).float())
+        self.log_dict({'train_epoch_acc' : output['train_epoch_BinaryAccuracy'],
+                       'train_epoch_pre' : output['train_epoch_BinaryPrecision'],
+                       'train_epoch_rec' : output['train_epoch_BinaryRecall'],
+                       'train_epoch_f1' : output['train_epoch_BinaryF1Score']},
                        on_epoch = True, prog_bar = True)
         self.train_logit_list = []
         self.train_label_list = []
@@ -114,16 +114,16 @@ class Classifier(LightningModule):
     def validation_step(self, val_batch, batch_idx):
         out = self.forward([val_batch['input_ids'], val_batch['token_type_ids'], val_batch['attention_mask']])
 
-        loss = self.criterion(out, val_batch['label'])
-        output = self.valid_metrics(torch.softmax(out, dim=1), val_batch['label'])
+        loss = self.criterion(out, val_batch['label'].unsqueeze(1).float())
+        output = self.valid_metrics(torch.sigmoid(out), val_batch['label'].unsqueeze(1).float())
 
         self.valid_logit_list.append(out.detach())
         self.valid_label_list.append(val_batch['label'].detach())
 
-        self.log_dict({'val_acc' : output['val_MulticlassAccuracy'],
-                       'val_pre' : output['val_MulticlassPrecision'][1],
-                       'val_rec' : output['val_MulticlassRecall'][1],
-                       'val_f1' : output['val_MulticlassF1Score'][1],
+        self.log_dict({'val_acc' : output['val_BinaryAccuracy'],
+                       'val_pre' : output['val_BinaryPrecision'],
+                       'val_rec' : output['val_BinaryRecall'],
+                       'val_f1' : output['val_BinaryF1Score'],
                        'val_loss' : loss.item()},
                        on_step=True, on_epoch=False, prog_bar=True)
         return loss
@@ -131,11 +131,11 @@ class Classifier(LightningModule):
     def on_validation_epoch_end(self):
         logits = torch.cat(self.valid_logit_list, dim=0)
         labels = torch.cat(self.valid_label_list, dim=0)
-        output = self.valid_epoch_metrics(torch.softmax(logits, dim=1), labels)
-        self.log_dict({'val_epoch_acc' : output['val_epoch_MulticlassAccuracy'],
-                       'val_epoch_pre' : output['val_epoch_MulticlassPrecision'][1],
-                       'val_epoch_rec' : output['val_epoch_MulticlassRecall'][1],
-                       'val_epoch_f1' : output['val_epoch_MulticlassF1Score'][1]},
+        output = self.valid_epoch_metrics(torch.sigmoid(logits), labels.unsqueeze(1).float())
+        self.log_dict({'val_epoch_acc' : output['val_epoch_BinaryAccuracy'],
+                       'val_epoch_pre' : output['val_epoch_BinaryPrecision'],
+                       'val_epoch_rec' : output['val_epoch_BinaryRecall'],
+                       'val_epoch_f1' : output['val_epoch_BinaryF1Score']},
                        on_epoch = True, prog_bar = True)
 
         self.valid_logit_list = []
@@ -143,8 +143,8 @@ class Classifier(LightningModule):
 
     def test_step(self, test_batch, batch_idx):
         out = self.forward([test_batch['input_ids'], test_batch['token_type_ids'], test_batch['attention_mask']])
-        loss = self.criterion(out, test_batch['label'])
-        # output = self.test_metrics(torch.softmax(out, dim=1), test_batch['label'])
+        loss = self.criterion(out, test_batch['label'].unsqueeze(1).float())
+        # output = self.test_metrics(torch.sigmoid(out), test_batch['label'].unsqueeze(1).float())
 
         self.test_logit_list.append(out.detach())
         self.test_label_list.append(test_batch['label'].detach())
@@ -154,12 +154,13 @@ class Classifier(LightningModule):
     def on_test_epoch_end(self):
         logits = torch.cat(self.test_logit_list, dim=0)
         labels = torch.cat(self.test_label_list, dim=0)
-        output = self.test_metrics(torch.softmax(logits, dim=1), labels)
-        self.log_dict({'test_acc' : output['test_MulticlassAccuracy'],
-                       'test_pre' : output['test_MulticlassPrecision'][1],
-                       'test_rec' : output['test_MulticlassRecall'][1],
-                       'test_f1' : output['test_MulticlassF1Score'][1]},
+        output = self.test_metrics(torch.sigmoid(logits), labels.unsqueeze(1).float())
+        self.log_dict({'test_acc' : output['test_BinaryAccuracy'],
+                       'test_pre' : output['test_BinaryPrecision'],
+                       'test_rec' : output['test_BinaryRecall'],
+                       'test_f1' : output['test_BinaryF1Score']},
                        on_epoch = True, prog_bar = True)
+
         self.test_logit_list = []
         self.test_label_list = []
 
@@ -169,10 +170,10 @@ class Classifier(LightningModule):
         self.test_dataset = StudDataset('../test2.tsv', self.config['pre_seq_len'])
 
         metrics = torchmetrics.MetricCollection([
-            Accuracy(task='multiclass', num_classes=2, average='micro'),
-            Precision(task='multiclass', num_classes=2, average=None),
-            Recall(task='multiclass', num_classes=2, average=None),
-            F1Score(task='multiclass', num_classes=2, average=None)
+            Accuracy(task='binary'),
+            Precision(task='binary'),
+            Recall(task='binary'),
+            F1Score(task='binary')
         ])
 
         # metrics = torchmetrics.MetricCollection([
@@ -208,9 +209,9 @@ class Classifier(LightningModule):
 
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
             optimizer,
-            max_lr=self.config["learning_rate"],
+            max_lr = self.config["learning_rate"] * self.config['accumulate'],
             epochs=self.config['epoch'],
-            steps_per_epoch=len(self.train_dataloader()) // self.config['accumulate'],
+            steps_per_epoch=int(len(self.train_dataloader()) / self.config['accumulate']),
             anneal_strategy='linear',
             pct_start=0.1
         )

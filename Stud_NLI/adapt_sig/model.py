@@ -23,8 +23,8 @@ class Classifier(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.config = config
-        weight = torch.tensor([1, 15.85685483870968])
-        self.criterion = nn.BCEWithLogitsLoss()
+        weight = torch.tensor([11.])
+        self.criterion = nn.BCEWithLogitsLoss(pos_weight=weight)
 
         self.train_logit_list = []
         self.train_label_list = []
