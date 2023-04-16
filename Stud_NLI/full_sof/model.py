@@ -137,9 +137,9 @@ class Classifier(LightningModule):
         self.test_label_list = []
 
     def prepare_data(self):
-        self.train_dataset = StudDataset('../train.tsv')
-        self.val_dataset = StudDataset('../val.tsv')
-        self.test_dataset = StudDataset('../test.tsv')
+        self.train_dataset = StudDataset('../train.tsv', self.config['prompt'])
+        self.val_dataset = StudDataset('../val.tsv', self.config['prompt'])
+        self.test_dataset = StudDataset('../test.tsv', self.config['prompt'])
 
         metrics = torchmetrics.MetricCollection([
             Accuracy(task='multiclass', num_classes=2, average='micro'),

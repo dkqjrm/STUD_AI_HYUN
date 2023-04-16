@@ -28,6 +28,7 @@ if __name__ == "__main__":
     parser.add_argument('--patience', default=5, type=int)
     parser.add_argument("--epoch", default=20, type=int)
     parser.add_argument("--reduction", default=16, type=int)
+    parser.add_argument("--prompt", default='이 학생은 자퇴할 것이다.', type=str)
 
     parser.add_argument('--devices', nargs='+', type=int, default=[0], help='list of device ids')
     parser.add_argument("--seed", default=42, type=int)

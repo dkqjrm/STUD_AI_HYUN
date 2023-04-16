@@ -7,10 +7,11 @@ from tqdm import tqdm
 
 
 class StudDataset(Dataset):
-    def __init__(self, path, length=1):
+    def __init__(self, path, prompt, length=1):
         self.preprocessing(path)
         self.tokenizer = AutoTokenizer.from_pretrained("klue/bert-base")
         self.length = length
+        self.prompt = prompt
 
     def __len__(self):
         return len(self.label_data)
@@ -19,7 +20,7 @@ class StudDataset(Dataset):
         text = self.text_data[idx]
         # lecture = self.lecture_data[idx]
         label = self.label_data[idx]
-        input_data = self.tokenizer.encode_plus('이 학생은 자퇴할 것이다.', text,
+        input_data = self.tokenizer.encode_plus(self.prompt, text,
                                                 return_tensors='pt',
                                                 padding='max_length',
                                                 max_length=512-self.length,

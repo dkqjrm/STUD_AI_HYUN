@@ -30,6 +30,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_attention_heads', type=int, default=12)
     parser.add_argument('--hidden_size', type=int, default=768)
     parser.add_argument('--hidden_dropout_prob', type=float, default=0.1)
+    parser.add_argument("--prompt", default='이 학생은 자퇴할 것이다.', type=str)
 
     parser.add_argument("--batch_size", default=16, type=int)
     parser.add_argument('--accumulate', default=1, type=int)
